@@ -24,17 +24,24 @@ public class OrderService {
 
     /**
      * Creates an order from the cart and locks it so no further modifications are possible.
-     * Invariant: cart must be OPEN and non-empty.
+     *
+     * <p>Idempotent: if the cart is already checked out, returns the existing order
+     * rather than throwing. This handles double-clicks and retried requests safely.
+     *
+     * @throws CartNotFoundException if the cart does not exist
+     * @throws IllegalStateException (→ 422) if the cart is empty
      */
     public Order checkout(String cartId) {
         Cart cart = cartRepository.findById(cartId)
                 .orElseThrow(() -> new CartNotFoundException(cartId));
 
+        // Idempotency: cart already checked out — return the existing order
         if (!cart.isOpen()) {
-            throw new CartAlreadyCheckedOutException(cartId);
+            return orderRepository.findByCartId(cartId)
+                    .orElseThrow(() -> new OrderNotFoundException(cartId));
         }
 
-        // Locks the cart — throws IllegalStateException if empty
+        // Locks the cart — throws IllegalStateException (→ 422) if empty
         cart.checkout();
         cartRepository.save(cart);
 

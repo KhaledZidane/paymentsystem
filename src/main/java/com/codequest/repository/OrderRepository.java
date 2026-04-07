@@ -19,4 +19,10 @@ public class OrderRepository {
     public Optional<Order> findById(String id) {
         return Optional.ofNullable(store.get(id));
     }
+
+    public Optional<Order> findByCartId(String cartId) {
+        return store.values().stream()
+                .filter(order -> order.getCartId().equals(cartId))
+                .findFirst();
+    }
 }
